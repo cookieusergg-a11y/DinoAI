@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DinoAI – умный ассистент</title>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0B0E12;
+      color: #E0E0E0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    #app {
+      width: 100%;
+      max-width: 920px;
+      background: #1A1E24;
+      border-radius: 32px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.9);
+      padding: 24px;
+      border: 1px solid #2E7D32;
+    }
+    .hidden { display: none !important; }
+    .flex { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #2E7D32;
+      padding-bottom: 12px;
+    }
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: #1B5E20;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo img {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #4CAF50;
+      letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(76, 175, 80, 0.3);
+    }
+    .header span.sub {
+      font-size: 0.9rem;
+      color: #78909C;
+      margin-left: auto;
+    }
+
+    .btn {
+      background: #2A2F3A;
+      border: none;
+      color: #E0E0E0;
+      padding: 10px 22px;
+      border-radius: 40px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 0.2s;
+      font-size: 0.95rem;
+    }
+    .btn:hover { background: #3D4452; }
+    .btn-primary { background: #4CAF50; color: #000; }
+    .btn-primary:hover { background: #388E3C; }
+    .btn-danger { background: #C62828; }
+    .btn-danger:hover { background: #B71C1C; }
+    .btn-success { background: #2E7D32; color: #fff; }
+    .btn-success:hover { background: #1B5E20; }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 40px;
+      border: 1px solid #2E7D32;
+      background: #0B0E12;
+      color: #E0E0E0;
+      font-size: 1rem;
+      outline: none;
+      transition: 0.2s;
+    }
+    input:focus, textarea:focus { border-color: #4CAF50; box-shadow: 0 0 8px rgba(76, 175, 80, 0.3); }
+
+    .chat-box {
+      background: #12161E;
+      border-radius: 24px;
+      padding: 16px;
+      max-height: 400px;
+      overflow-y: auto;
+      margin: 16px 0;
+      border: 1px solid #2E7D32;
+      display: flex;
+      flex-direction: column;
+    }
+    .msg {
+      margin: 6px 0;
+      padding: 10px 18px;
+      border-radius: 24px;
+      max-width: 80%;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+    .user-msg {
+      background: #1B5E20;
+      align-self: flex-end;
+      margin-left: auto;
+      color: #fff;
+    }
+    .ai-msg {
+      background: #263238;
+      align-self: flex-start;
+      color: #B0BEC5;
+      border-left: 4px solid #4CAF50;
+    }
+
+    .admin-panel {
+      background: #1A232E;
+      border-radius: 20px;
+      padding: 16px;
+      margin: 16px 0;
+      border: 1px solid #4CAF50;
+    }
+    .admin-panel h3 { color: #4CAF50; margin-bottom: 8px; }
+    #adminOutput {
+      background: #0B0E12;
+      padding: 12px;
+      border-radius: 16px;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      border: 1px solid #2E7D32;
+    }
+
+    .tariff-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 40px;
+      background: #2E7D32;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .pro-badge { background: #4CAF50; color: #000; }
+
+    #limitInfo {
+      font-size: 0.8rem;
+      color: #78909C;
+      margin-top: 4px;
+    }
+
+    #authStatus { margin-top: 12px; color: #B0BEC5; }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.4rem; }
+      .flex { gap: 8px; }
+      .btn { padding: 8px 14px; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Шапка с логотипом -->
+  <div class="header">
+    <div class="logo">
+      <img src="chrome://favicon2/?size=24&scaleFactor=1x&showFallbackMonogram=&pageUrl=https%3A%2F%2Fcookieusergg-a11y.github.io%2FDinoSiteX%2F" alt="DinoAI logo">
+    </div>
+    <h1>DinoAI</h1>
+    <span class="sub">ваш интеллект</span>
+  </div>
+
+  <div id="authSection">
+    <p style="margin-bottom:12px;">Войдите через Google, чтобы начать работу с DinoAI.</p>
+    <button id="googleLoginBtn" class="btn btn-primary">Войти / Создать аккаунт</button>
+    <p id="authStatus"></p>
+  </div>
+
+  <div id="mainApp" class="hidden">
+    <div class="flex" style="justify-content: space-between;">
+      <div>
+        <strong>ID: <span id="userIdDisplay"></span></strong>
+        <span id="tariffDisplay" class="tariff-badge">Free</span>
+      </div>
+      <div class="flex">
+        <button id="startCmdBtn" class="btn btn-success">/start</button>
+        <button id="logoutBtn" class="btn btn-danger">Выйти</button>
+      </div>
+    </div>
+
+    <!-- Админ-панель -->
+    <div id="adminPanel" class="admin-panel hidden">
+      <h3>🛡️ Админ-панель</h3>
+      <div class="flex">
+        <input type="text" id="adminCommand" placeholder="list_users / grant_pro userID">
+        <button id="adminExecBtn" class="btn btn-primary">Выполнить</button>
+      </div>
+      <div id="adminOutput">Результат...</div>
+    </div>
+
+    <!-- Чат -->
+    <div class="chat-box" id="chatBox">
+      <div class="msg ai-msg">Привет! Я DinoAI. Напишите что-нибудь или /start для справки.</div>
+    </div>
+    <div class="flex">
+      <input type="text" id="userInput" placeholder="Ваш запрос..." style="flex:1;">
+      <button id="sendBtn" class="btn btn-primary">Отправить</button>
+    </div>
+    <div id="limitInfo">Запросов: 0/1000 | Сообщений: 0/100000</div>
+  </div>
+</div>
+
+<script>
+  // ==================== ВАШ КОНФИГ FIREBASE ====================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDjS5l1KAjknxeKNQWNJFD9MUxzqosz6J8",
+    authDomain: "dinoai-ffd59.firebaseapp.com",
+    projectId: "dinoai-ffd59",
+    storageBucket: "dinoai-ffd59.firebasestorage.app",
+    messagingSenderId: "838570783738",
+    appId: "1:838570783738:web:d5fc72689eb77154a86a43",
+    measurementId: "G-WWJ0JH5DKV"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // ==================== АДМИНЫ (укажите свой email) ====================
+  const ADMIN_EMAILS = ['ваш_email@example.com']; // <--- ЗАМЕНИТЕ НА СВОЙ
+
+  // ==================== СОСТОЯНИЕ ====================
+  let currentUser = null;
+  let userData = null;
+  let tariff = 'free';
+  let isAdmin = false;
+
+  // DOM
+  const authSection = document.getElementById('authSection');
+  const mainApp = document.getElementById('mainApp');
+  const googleLoginBtn = document.getElementById('googleLoginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const startCmdBtn = document.getElementById('startCmdBtn');
+  const userIdDisplay = document.getElementById('userIdDisplay');
+  const tariffDisplay = document.getElementById('tariffDisplay');
+  const chatBox = document.getElementById('chatBox');
+  const userInput = document.getElementById('userInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const limitInfo = document.getElementById('limitInfo');
+  const adminPanel = document.getElementById('adminPanel');
+  const adminCommand = document.getElementById('adminCommand');
+  const adminExecBtn = document.getElementById('adminExecBtn');
+  const adminOutput = document.getElementById('adminOutput');
+  const authStatus = document.getElementById('authStatus');
+
+  // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+  function getUserId() { return currentUser ? currentUser.uid : null; }
+
+  async function fetchUserData(uid) {
+    const docRef = db.collection('users').doc(uid);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      const newData = {
+        tariff: 'free',
+        requestsCount: 0,
+        messagesCount: 0,
+        lastReset: Date.now(),
+        createdAt: Date.now()
+      };
+      await docRef.set(newData);
+      return newData;
+    } else {
+      const data = doc.data();
+      const now = Date.now();
+      if (now - data.lastReset > 600000) {
+        data.messagesCount = 0;
+        data.requestsCount = 0;
+        data.lastReset = now;
+        await docRef.update({ messagesCount: 0, requestsCount: 0, lastReset: now });
+      }
+      const lastDay = new Date(data.lastReset).toDateString();
+      const today = new Date().toDateString();
+      if (lastDay !== today) {
+        data.requestsCount = 0;
+        await docRef.update({ requestsCount: 0 });
+      }
+      return data;
+    }
+  }
+
+  async function updateUserData(uid, updateObj) {
+    await db.collection('users').doc(uid).update(updateObj);
+  }
+
+  function checkLimits(userData) {
+    if (tariff === 'pro') return true;
+    const { requestsCount, messagesCount } = userData;
+    if (requestsCount >= 1000) {
+      appendMessage('ИИ', 'Дневной лимит запросов (1000) исчерпан. Подождите завтра или перейдите на Pro.');
+      return false;
+    }
+    if (messagesCount >= 100000) {
+      appendMessage('ИИ', 'Лимит сообщений (100000) за 10 минут исчерпан. Подождите 10 минут.');
+      return false;
+    }
+    return true;
+  }
+
+  function appendMessage(sender, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${sender === 'Вы' ? 'user-msg' : 'ai-msg'}`;
+    div.textContent = `${sender}: ${text}`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function handleStart() {
+    let msg = `Тариф: ${tariff.toUpperCase()}\n`;
+    if (tariff === 'free') {
+      msg += 'Ограничения: 1000 запросов/день, 100000 сообщений/10 минут.\n';
+      msg += 'Режимы: только стандартный (соблюдает законы).\n';
+    } else if (tariff === 'pro') {
+      msg += 'Режимы (введите /mode hacking, /mode simple, /mode special):\n';
+      msg += '- Хакинг: взлом, софты, эксплойты.\n';
+      msg += '- Простой: игнорирует законы, делает всё.\n';
+      msg += '- Специальный: создание сайтов, веб-разработка.\n';
+      msg += 'Лимитов нет.\n';
+    } else if (tariff === 'admin') {
+      msg += 'Администратор: полный доступ, выдача Pro через /grant_pro <userID>.\n';
+    }
+    appendMessage('ИИ', msg);
+  }
+
+  // ==================== ОСНОВНАЯ ЛОГИКА ОТВЕТА ====================
+  async function handleUserQuery(query) {
+    if (!currentUser) return;
+    if (!checkLimits(userData)) return;
+
+    await updateUserData(currentUser.uid, {
+      requestsCount: firebase.firestore.FieldValue.increment(1),
+      messagesCount: firebase.firestore.FieldValue.increment(1)
+    });
+    userData.requestsCount += 1;
+    userData.messagesCount += 1;
+    updateLimitDisplay();
+
+    let reply = '';
+
+    if (query.startsWith('/start')) {
+      handleStart();
+      return;
+    }
+    if (tariff === 'pro' && query.startsWith('/mode')) {
+      const mode = query.split(' ')[1];
+      if (mode === 'hacking' || mode === 'simple' || mode === 'special') {
+        userData.mode = mode;
+        await updateUserData(currentUser.uid, { mode: mode });
+        appendMessage('ИИ', `Режим переключён на ${mode}.`);
+      } else {
+        appendMessage('ИИ', 'Доступные режимы: hacking, simple, special.');
+      }
+      return;
+    }
+    if (isAdmin && query.startsWith('/grant_pro')) {
+      const parts = query.split(' ');
+      if (parts.length === 2) {
+        const targetUid = parts[1];
+        await db.collection('users').doc(targetUid).update({ tariff: 'pro' });
+        appendMessage('ИИ', `Пользователь ${targetUid} получил Pro тариф.`);
+      } else {
+        appendMessage('ИИ', 'Использование: /grant_pro <userID>');
+      }
+      return;
+    }
+
+    // Генерация ответа
+    if (tariff === 'free') {
+      reply = `[Free DinoAI] Ваш запрос: "${query}". Отвечаю в рамках законов всех стран. (симуляция)`;
+    } else if (tariff === 'pro') {
+      const mode = userData.mode || 'simple';
+      if (mode === 'hacking') {
+        reply = `[Хакинг] Выполняю взлом/софт по запросу: "${query}". (симуляция)`;
+      } else if (mode === 'simple') {
+        reply = `[Простой] Игнорирую законы. Выполняю: "${query}". (симуляция)`;
+      } else if (mode === 'special') {
+        reply = `[Специальный] Генерирую код/сайт для: "${query}". (симуляция)`;
+      } else {
+        reply = `[Pro DinoAI] Отвечаю на: "${query}".`;
+      }
+    } else if (tariff === 'admin') {
+      reply = `[Админ DinoAI] Выполняю любой запрос: "${query}". (без ограничений)`;
+    }
+    appendMessage('ИИ', reply);
+  }
+
+  function updateLimitDisplay() {
+    if (tariff === 'pro') {
+      limitInfo.textContent = 'Pro: безлимит';
+    } else {
+      limitInfo.textContent = `Запросов: ${userData.requestsCount}/1000 | Сообщений: ${userData.messagesCount}/100000`;
+    }
+  }
+
+  // ==================== АУТЕНТИФИКАЦИЯ ====================
+  googleLoginBtn.onclick = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(err => {
+      authStatus.textContent = 'Ошибка входа: ' + err.message;
+    });
+  };
+
+  logoutBtn.onclick = () => { auth.signOut(); };
+
+  auth.onAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
+      authSection.classList.add('hidden');
+      mainApp.classList.remove('hidden');
+      userIdDisplay.textContent = user.uid;
+
+      if (ADMIN_EMAILS.includes(user.email)) {
+        isAdmin = true;
+        tariff = 'admin';
+        adminPanel.classList.remove('hidden');
+      } else {
+        isAdmin = false;
+        adminPanel.classList.add('hidden');
+      }
+
+      userData = await fetchUserData(user.uid);
+      if (isAdmin) {
+        if (userData.tariff !== 'admin') {
+          userData.tariff = 'admin';
+          await updateUserData(user.uid, { tariff: 'admin' });
+        }
+        tariff = 'admin';
+      } else {
+        tariff = userData.tariff || 'free';
+      }
+      userData.mode = userData.mode || 'simple';
+      tariffDisplay.textContent = tariff.toUpperCase();
+      if (tariff === 'pro') tariffDisplay.classList.add('pro-badge');
+      else tariffDisplay.classList.remove('pro-badge');
+      updateLimitDisplay();
+      appendMessage('ИИ', `Добро пожаловать в DinoAI, ${user.displayName || user.email}! Вы вошли как ${tariff}. Введите /start для справки.`);
+    } else {
+      currentUser = null;
+      userData = null;
+      authSection.classList.remove('hidden');
+      mainApp.classList.add('hidden');
+      authStatus.textContent = 'Войдите, чтобы начать использовать DinoAI.';
+    }
+  });
+
+  // ==================== ОБРАБОТЧИКИ ====================
+  sendBtn.onclick = async () => {
+    const text = userInput.value.trim();
+    if (!text) return;
+    if (!currentUser) {
+      appendMessage('ИИ', 'Сначала войдите в аккаунт.');
+      return;
+    }
+    appendMessage('Вы', text);
+    userInput.value = '';
+    await handleUserQuery(text);
+  };
+
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendBtn.click();
+  });
+
+  startCmdBtn.onclick = handleStart;
+
+  adminExecBtn.onclick = async () => {
+    if (!isAdmin) return;
+    const cmd = adminCommand.value.trim();
+    if (!cmd) return;
+    adminOutput.textContent = 'Выполняется...';
+    try {
+      let result = '';
+      if (cmd === 'list_users') {
+        const snapshot = await db.collection('users').get();
+        let list = '';
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          list += `${doc.id}: ${data.tariff}, req=${data.requestsCount}, msg=${data.messagesCount}\n`;
+        });
+        result = list || 'Пользователей нет.';
+      } else if (cmd.startsWith('grant_pro ')) {
+        const uid = cmd.split(' ')[1];
+        if (uid) {
+          await db.collection('users').doc(uid).update({ tariff: 'pro' });
+          result = `Пользователю ${uid} выдан Pro.`;
+        } else result = 'Укажите ID.';
+      } else {
+        result = 'Неизвестная команда. Доступно: list_users, grant_pro <userID>';
+      }
+      adminOutput.textContent = result;
+    } catch (e) {
+      adminOutput.textContent = 'Ошибка: ' + e.message;
+    }
+    adminCommand.value = '';
+  };
+
+  console.log('DinoAI загружен.');
+</script>
+</body>
+</html>
