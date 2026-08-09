@@ -133,7 +133,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- ШАПКА -->
         <div class="header">
             <div class="logo">
                 <svg viewBox="0 0 1280 1009">
@@ -144,7 +143,6 @@
             <span class="sub">v5 · умный</span>
         </div>
 
-        <!-- СТРАНИЦА ВХОДА -->
         <div id="authSection">
             <div class="logo-big">
                 <svg viewBox="0 0 1280 1009">
@@ -157,7 +155,6 @@
             <div id="authStatus"></div>
         </div>
 
-        <!-- ОСНОВНОЙ ИНТЕРФЕЙС (скрыт до входа) -->
         <div id="mainApp" class="hidden">
             <div class="flex" style="justify-content:space-between; margin-bottom:12px;">
                 <div>
@@ -202,9 +199,6 @@
     </div>
 
     <script>
-        // ============================================================
-        // FIREBASE
-        // ============================================================
         const firebaseConfig = {
             apiKey: "AIzaSyDjS5l1KAjknxeKNQWNJFD9MUxzqosz6J8",
             authDomain: "dinoai-ffd59.firebaseapp.com",
@@ -225,9 +219,6 @@
         let tariff = 'free';
         let isAdmin = false;
 
-        // ============================================================
-        // DOM
-        // ============================================================
         const $ = id => document.getElementById(id);
         const authSection = $('authSection');
         const mainApp = $('mainApp');
@@ -255,9 +246,6 @@
         let adminExecBtn = null;
         let adminOutput = null;
 
-        // ============================================================
-        // FIRESTORE
-        // ============================================================
         async function fetchUserData(uid) {
             const docRef = db.collection('users').doc(uid);
             const doc = await docRef.get();
@@ -282,9 +270,6 @@
             await db.collection('users').doc(uid).update(updateObj);
         }
 
-        // ============================================================
-        // CHAT
-        // ============================================================
         function appendMessage(sender, text, isCode = false) {
             const div = document.createElement('div');
             div.className = `msg ${sender === 'Вы' ? 'user-msg' : 'ai-msg'}`;
@@ -347,9 +332,6 @@
             return div;
         }
 
-        // ============================================================
-        // UI UPDATE
-        // ============================================================
         function updateUI() {
             if (!currentUser) return;
             userDisplay.textContent = currentUser.displayName || currentUser.email || currentUser.uid;
@@ -369,9 +351,6 @@
             }
         }
 
-        // ============================================================
-        // ADMIN PANEL
-        // ============================================================
         function createAdminPanel() {
             adminPanel = document.createElement('div');
             adminPanel.className = 'admin-panel';
@@ -423,9 +402,6 @@
             adminCommand.value = '';
         }
 
-        // ============================================================
-        // GENERATE PHOTO
-        // ============================================================
         function generatePhoto(prompt) {
             if (!currentUser) { appendMessage('DinoAI', 'Сначала войдите.'); return; }
             if (tariff !== 'pro' && (userData.photoUsed || 0) >= 15) {
@@ -466,9 +442,6 @@
             appendMessage('DinoAI', 'Фото сгенерировано.');
         }
 
-        // ============================================================
-        // GENERATE VIDEO
-        // ============================================================
         function generateVideo(prompt) {
             if (!currentUser) { appendMessage('DinoAI', 'Сначала войдите.'); return; }
             if (tariff !== 'pro' && (userData.videoUsed || 0) >= 2) {
@@ -524,9 +497,6 @@
             appendMessage('DinoAI', 'Видео-анимация создана.');
         }
 
-        // ============================================================
-        // SMART RESPONSE
-        // ============================================================
         function getSmartResponse(query) {
             const lower = query.toLowerCase();
             try {
@@ -685,9 +655,6 @@ console.log(greet("DinoAI"));`;
             appendMessage('DinoAI', reply);
         }
 
-        // ============================================================
-        // AUTH
-        // ============================================================
         googleLoginBtn.onclick = function() {
             const provider = new firebase.auth.GoogleAuthProvider();
             auth.signInWithRedirect(provider);
@@ -725,9 +692,6 @@ console.log(greet("DinoAI"));`;
             }
         });
 
-        // ============================================================
-        // EVENTS
-        // ============================================================
         logoutBtn.onclick = function() {
             auth.signOut();
             chatBox.innerHTML = '';
