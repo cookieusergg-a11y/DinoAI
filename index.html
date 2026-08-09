@@ -106,11 +106,13 @@ async function askAI(prompt) {
         let codePart = parts[0].trim();
         let explanation = parts.length > 1 ? parts[1].trim() : '';
         let code = codePart.replace(codeMarker, '').trim();
-        let lines = code.split('\n');
-        if (lines.length > 0 && lines[0].trim().startsWith('(')) {
-            lines.shift();
+        // Если есть (язык) в начале — удаляем
+        if (code.startsWith('(')) {
+            let idx = code.indexOf(')');
+            if (idx !== -1) {
+                code = code.substring(idx + 1).trim();
+            }
         }
-        code = lines.join('\n').trim();
         if (code) {
             if (explanation) {
                 const expDiv = document.createElement('div');
