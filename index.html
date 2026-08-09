@@ -87,7 +87,63 @@ const authSection=$('authSection'),mainApp=$('mainApp'),googleLoginBtn=$('google
 async function fetchUserData(uid){const docRef=db.collection('users').doc(uid),doc=await docRef.get();if(!doc.exists){const newData={tariff:'free',photoUsed:0,videoUsed:0,lastReset:Date.now()};await docRef.set(newData);return newData}else{const data=doc.data(),now=Date.now();if(now-data.lastReset>86400000){data.photoUsed=0;data.videoUsed=0;data.lastReset=now;await docRef.update({photoUsed:0,videoUsed:0,lastReset:now})}return data}}
 async function updateUserData(uid,updateObj){await db.collection('users').doc(uid).update(updateObj)}
 
-function appendMessage(sender,text,isCode=!1){const div=document.createElement('div');div.className=`msg ${sender==='Вы'?'user-msg':'ai-msg'}`;if(isCode){const block=document.createElement('div');block.className='code-block';const pre=document.createElement('pre');pre.textContent=text;block.appendChild(pre);const actions=document.createElement('div');actions.className='code-actions';const copyBtn=document.createElement('button');copyBtn.className='btn btn-sm';copyBtn.textContent='📋 Копировать';copyBtn.onclick=function(){navigator.clipboard.writeText(text).then(()=>{copyBtn.textContent='✅ Скопировано!';setTimeout(()=>{copyBtn.textContent='📋 Копировать'},2e3)}).catch(()=>alert('Не удалось скопировать.'))};actions.appendChild(copyBtn);const downloadBtn=document.createElement('button');downloadBtn.className='btn btn-sm';downloadBtn.textContent='💾 Скачать';downloadBtn.onclick=function(){let ext='txt';if(text.includes('<!DOCTYPE html>')||text.includes('<html'))ext='html';else if(text.includes('<?php'))ext='php';else if(text.includes('def ')||text.includes('class ')||text.includes('import '))ext='py';else if(text.includes('function')||text.includes('console.log'))ext='js';else if(text.includes('{')&&text.includes('}')&&!text.includes('function'))ext='css';else if(text.includes('public class'))ext='java';const blob=new Blob([text],{type:'text/plain'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`code.${ext}`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url)};actions.appendChild(downloadBtn);block.appendChild(actions);div.appendChild(block)}else div.textContent=sender+': '+text;chatBox.appendChild(div);chatBox.scrollTop=chatBox.scrollHeight;return div}
+// ============================================================
+// ГЛАВНАЯ ФУНКЦИЯ ДЛЯ ВЫВОДА СООБЩЕНИЙ С КНОПКАМИ
+// ============================================================
+function appendMessage(sender, text, isCode = false) {
+    const div = document.createElement('div');
+    div.className = `msg ${sender === 'Вы' ? 'user-msg' : 'ai-msg'}`;
+    if (isCode) {
+        const block = document.createElement('div');
+        block.className = 'code-block';
+        const pre = document.createElement('pre');
+        pre.textContent = text;
+        block.appendChild(pre);
+        const actions = document.createElement('div');
+        actions.className = 'code-actions';
+        // Копировать
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-sm';
+        copyBtn.textContent = '📋 Копировать';
+        copyBtn.onclick = function() {
+            navigator.clipboard.writeText(text).then(() => {
+                copyBtn.textContent = '✅ Скопировано!';
+                setTimeout(() => { copyBtn.textContent = '📋 Копировать'; }, 2000);
+            }).catch(() => alert('Не удалось скопировать.'));
+        };
+        actions.appendChild(copyBtn);
+        // Скачать
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'btn btn-sm';
+        downloadBtn.textContent = '💾 Скачать';
+        downloadBtn.onclick = function() {
+            let ext = 'txt';
+            if (text.includes('<!DOCTYPE html>') || text.includes('<html')) ext = 'html';
+            else if (text.includes('<?php')) ext = 'php';
+            else if (text.includes('def ') || text.includes('class ') || text.includes('import ')) ext = 'py';
+            else if (text.includes('function') || text.includes('console.log')) ext = 'js';
+            else if (text.includes('{') && text.includes('}') && !text.includes('function')) ext = 'css';
+            else if (text.includes('public class')) ext = 'java';
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `code.${ext}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+        actions.appendChild(downloadBtn);
+        block.appendChild(actions);
+        div.appendChild(block);
+    } else {
+        div.textContent = sender + ': ' + text;
+    }
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
 function appendThinking(){const div=document.createElement('div');div.className='msg ai-msg thinking';div.textContent='🦕 DinoAI: Думаю...';chatBox.appendChild(div);chatBox.scrollTop=chatBox.scrollHeight;return div}
 function updateUI(){if(!currentUser)return;userDisplay.textContent=currentUser.displayName||currentUser.email||currentUser.uid;tariff=isAdmin?'pro':(userData.tariff||'free');tariffDisplay.textContent=tariff.toUpperCase();tariffDisplay.className='tariff-badge'+(tariff==='pro'?' pro-badge':'');const photoLeft=tariff==='pro'?'∞':Math.max(0,15-(userData.photoUsed||0)),videoLeft=tariff==='pro'?'∞':Math.max(0,2-(userData.videoUsed||0));photoCounter.textContent=`Осталось: ${photoLeft}`;videoCounter.textContent=`Осталось: ${videoLeft}`;limitInfo.textContent=`Запросов: ∞ | Фото: ${photoLeft} | Видео: ${videoLeft}`;if(isAdmin)adminPanel.classList.remove('hidden');else adminPanel.classList.add('hidden')}
 adminExecBtn.addEventListener('click',async function(){if(!isAdmin)return;const cmd=adminCommand.value.trim();adminOutput.textContent='Выполняется...';try{let result='';if(cmd==='list_users'){const snapshot=await db.collection('users').get();let list='';snapshot.forEach(doc=>{const data=doc.data();list+=`${doc.id}: ${data.tariff}, фото=${data.photoUsed||0}, видео=${data.videoUsed||0}\n`});result=list||'Нет пользователей.'}else if(cmd.startsWith('grant_pro ')){const uid=cmd.split(' ')[1];if(uid){await db.collection('users').doc(uid).update({tariff:'pro'});result=`Пользователю ${uid} выдан Pro.`}else result='Укажите UID.'}else result='Команды: list_users, grant_pro <uid>';adminOutput.textContent=result}catch(e){adminOutput.textContent='Ошибка: '+e.message}adminCommand.value=''});
@@ -95,6 +151,9 @@ function generatePhoto(prompt){if(!currentUser){appendMessage('DinoAI','Снач
 function generateVideo(prompt){if(!currentUser){appendMessage('DinoAI','Сначала войдите.');return}if(tariff!=='pro'&&(userData.videoUsed||0)>=2){appendMessage('DinoAI','Лимит видео исчерпан.');return}if(!prompt.trim())prompt='анимация';const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;const ctx=canvas.getContext('2d');let frame=0,totalFrames=120,seed=prompt.length+prompt.charCodeAt(0)*13,rng=s=>{s=Math.sin(s)*43758.5453123;return s-Math.floor(s)};function drawFrame(){frame++;if(frame>totalFrames)return;const progress=frame/totalFrames,hueBase=(seed+progress*180)%360,grad=ctx.createLinearGradient(0,0,640,360);grad.addColorStop(0,`hsl(${hueBase},80%,50%)`);grad.addColorStop(1,`hsl(${(hueBase+60)%360},70%,30%)`);ctx.fillStyle=grad;ctx.fillRect(0,0,640,360);const count=8+Math.floor(rng(seed+1)*8);for(let i=0;i<count;i++){const angle=(i/count)*Math.PI*2+progress*2+(rng(seed+i*3)*0.5),radius=80+Math.sin(progress*4+i*1.5)*40,x=320+Math.cos(angle)*radius,y=180+Math.sin(angle)*radius*0.6,size=15+Math.sin(progress*3+i*1.2)*10;ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.fillStyle=`hsla(${(hueBase+i*30+progress*50)%360},90%,70%,0.7)`;ctx.fill()}ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='bold 36px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(prompt.substring(0,20),320,180);if(frame<totalFrames)requestAnimationFrame(drawFrame)}videoOutput.innerHTML='';videoOutput.appendChild(canvas);drawFrame();if(tariff!=='pro'){userData.videoUsed=(userData.videoUsed||0)+1;updateUserData(currentUser.uid,{videoUsed:userData.videoUsed});updateUI()}appendMessage('DinoAI','🎬 Видео-анимация создана.')}
 function getSmartResponse(query){const lower=query.toLowerCase();try{const mathMatch=query.match(/^([\d+\-*/().%^,sqrtπe ]+)$/i);if(mathMatch){let evalStr=mathMatch[1].replace(/π/gi,'Math.PI').replace(/e(?![xp])/gi,'Math.E').replace(/sqrt/gi,'Math.sqrt').replace(/sin/gi,'Math.sin').replace(/cos/gi,'Math.cos').replace(/tan/gi,'Math.tan').replace(/log/gi,'Math.log10').replace(/ln/gi,'Math.log').replace(/abs/gi,'Math.abs');if(/^[\d+\-*/().%^,Math.sincosPIE ]+$/.test(evalStr.replace(/Math\.\w+/g,''))){const result=Function(`"use strict"; return (${evalStr})`)();if(typeof result==='number'&&isFinite(result))return`Результат: ${result}`}}}catch(e){}if(lower.includes('время')||lower.includes('который час'))return`Сейчас ${new Date().toLocaleTimeString('ru-RU')}`;if(lower.includes('создатель')||lower.includes('автор'))return'Меня создал Gothbreach (cookieusergg). Я – универсальный ИИ.';const codeTriggers=['напиши','сделай','создай','код','программа','сайт','скрипт','функция','класс'];const isCodeRequest=codeTriggers.some(t=>lower.includes(t))&&(lower.includes('html')||lower.includes('css')||lower.includes('js')||lower.includes('python')||lower.includes('php')||lower.includes('java')||lower.includes('сайт')||lower.includes('программ')||lower.includes('скрипт'));if(isCodeRequest){let lang='javascript';if(lower.includes('python'))lang='python';else if(lower.includes('html'))lang='html';else if(lower.includes('css'))lang='css';else if(lower.includes('php'))lang='php';else if(lower.includes('java'))lang='java';let code='',explanation='';if(lower.includes('сайт')||lower.includes('html')){code='<!DOCTYPE html>\n<html>\n<head>\n    <title>Мой сайт</title>\n    <style>\n        body { font-family: Arial; background: #0B0E12; color: #E0E0E0; }\n        h1 { color: #4CAF50; }\n    </style>\n</head>\n<body>\n    <h1>Привет, я DinoAI</h1>\n    <script>\n        console.log("Сайт работает!");\n    <\/script>\n</body>\n</html>';explanation='Базовый HTML-документ.'}else if(lower.includes('python')){code='# Простой скрипт на Python\nprint("Привет, мир!")\nfor i in range(5):\n    print(f"Шаг {i+1}")';explanation='Базовый скрипт Python.'}else if(lower.includes('css')){code='/* Стили для сайта */\nbody {\n    background: #0B0E12;\n    color: #E0E0E0;\n    font-family: \'Segoe UI\', sans-serif;\n}\nh1 {\n    color: #4CAF50;\n    text-shadow: 0 0 8px rgba(76,175,80,0.3);\n}\n.btn {\n    background: #4CAF50;\n    border: none;\n    padding: 10px 20px;\n    border-radius: 40px;\n    color: #000;\n    cursor: pointer;\n}';explanation='CSS-стили.'}else if(lower.includes('php')){code='<?php\n$name = "DinoAI";\necho "Привет, $name!";\n?>';explanation='PHP-скрипт.'}else{code='// Простая программа на JavaScript\nfunction greet(name) {\n    return `Привет, ${name}!`;\n}\nconsole.log(greet("DinoAI"));';explanation='Функция на JavaScript.'}return`📄 **Код (${lang})**\n\n${code}\n\n💡 ${explanation}`}if(lower.match(/^(привет|здравствуй|hello|hi|hey)/))return'Привет! Я DinoAI, универсальный ИИ. Задавайте любые вопросы.';if(lower.includes('спасиб')||lower.includes('благодарю'))return'Всегда пожалуйста! Обращайтесь ещё.';if(lower.includes('что ты умеешь')||lower.includes('твои возможности'))return'Я умею: писать код (сайты, программы), генерировать фото и видео, отвечать на вопросы, решать математику. В Pro-тарифе мои ответы более детальные и развёрнутые.';if(tariff==='pro'){const proResponses=['Отличный вопрос! Давайте разберём его подробно. Во-первых, стоит отметить, что... (здесь идёт глубокий анализ). Кроме того, я бы рекомендовал рассмотреть альтернативные подходы, такие как... Наконец, не забывайте про оптимизацию и тестирование.','Я вижу, что вы затронули важную тему. В рамках Pro-доступа я могу предоставить вам полный спектр решений: от базовой архитектуры до продвинутых техник. Например, вы можете использовать следующий паттерн... Также стоит учесть факторы масштабирования.','Это сложная задача, но я помогу вам. Мой гибридный интеллект (Claude+ChatGPT+Gemini+Grok) позволяет предложить комплексный план: 1) анализ требований, 2) проектирование, 3) реализация, 4) тестирование. Давайте начнём с первого шага.','С удовольствием отвечу на ваш вопрос. В Pro-режиме я имею доступ к расширенной базе знаний. Мой ответ будет включать: теоретическую основу, практические примеры и рекомендации по внедрению. Вот что я предлагаю...'];return proResponses[Math.floor(Math.random()*proResponses.length)]}else{const freeResponses=['Хороший вопрос. Мой ответ: нужно подумать и выбрать оптимальное решение.','Я бы посоветовал действовать последовательно. Начните с малого.','Это зависит от контекста. Если уточните, я смогу дать более точный ответ.','В общем случае, лучше использовать проверенные методы. Попробуйте поискать информацию в открытых источниках.'];return freeResponses[Math.floor(Math.random()*freeResponses.length)]}}
 
+// ============================================================
+// ОБРАБОТКА ЗАПРОСА — ИЗВЛЕЧЕНИЕ КОДА И ВЫЗОВ КНОПОК
+// ============================================================
 async function askAI(prompt) {
     const thinkingDiv = appendThinking();
     await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1e3));
@@ -106,7 +165,7 @@ async function askAI(prompt) {
         let codePart = parts[0].trim();
         let explanation = parts.length > 1 ? parts[1].trim() : '';
         let code = codePart.replace(codeMarker, '').trim();
-        // Если есть (язык) в начале — удаляем
+        // Убираем (язык) в начале
         if (code.startsWith('(')) {
             let idx = code.indexOf(')');
             if (idx !== -1) {
