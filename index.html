@@ -419,16 +419,26 @@
     }
   }
 
-  // ==================== АУТЕНТИФИКАЦИЯ ====================
+  // ==================== АУТЕНТИФИКАЦИЯ (через редирект) ====================
   googleLoginBtn.onclick = () => {
     const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider).catch(err => {
-      authStatus.textContent = 'Ошибка входа: ' + err.message;
-    });
+    auth.signInWithRedirect(provider);
   };
 
-  logoutBtn.onclick = () => { auth.signOut(); };
+  // Обработка результата после возврата с редиректа
+  auth.getRedirectResult().then((result) => {
+    if (result.user) {
+      console.log('Вход выполнен через redirect');
+    }
+  }).catch((error) => {
+    authStatus.textContent = 'Ошибка входа: ' + error.message;
+  });
 
+  logoutBtn.onclick = () => {
+    auth.signOut();
+  };
+
+  // ==================== СЛУШАТЕЛЬ АВТОРИЗАЦИИ ====================
   auth.onAuthStateChanged(async (user) => {
     if (user) {
       currentUser = user;
@@ -436,6 +446,7 @@
       mainApp.classList.remove('hidden');
       userIdDisplay.textContent = user.uid;
 
+      // Проверка на администратора
       if (ADMIN_EMAILS.includes(user.email)) {
         isAdmin = true;
         tariff = 'admin';
@@ -445,6 +456,7 @@
         adminPanel.classList.add('hidden');
       }
 
+      // Загружаем или создаём данные пользователя
       userData = await fetchUserData(user.uid);
       if (isAdmin) {
         if (userData.tariff !== 'admin') {
